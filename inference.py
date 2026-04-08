@@ -35,19 +35,20 @@ TOOLS = [
 ]
 
 def run_task(task_id: str, max_steps: int) -> float:
-    print(f"START")
+    print(f"[START] task={task_id}", flush=True)
+    steps_taken = 0
     with DataTriageClient() as env:
         try:
             session_id, obs = env.reset(task_id, seed=42)
         except Exception as e:
-            print(f"RESET_ERROR: {e}")
-            print("END")
+            print(f"[STEP] task={task_id} step=0 reward=0.0000 error=reset_failed", flush=True)
+            print(f"[END] task={task_id} score=0.0000 steps=0 status=reset_failed", flush=True)
             return 0.0
 
         if oai is None:
             # Return safely when token is unavailable; never crash the script.
-            print("MODEL_UNAVAILABLE: HF_TOKEN is missing")
-            print("END")
+            print(f"[STEP] task={task_id} step=0 reward=0.0000 error=model_unavailable", flush=True)
+            print(f"[END] task={task_id} score=0.0000 steps=0 status=model_unavailable", flush=True)
             return 0.0
 
         messages = [
@@ -72,7 +73,10 @@ def run_task(task_id: str, max_steps: int) -> float:
                 )
                 msg = response.choices[0].message
             except Exception as e:
-                print(f"MODEL_ERROR: {e}")
+                print(
+                    f"[STEP] task={task_id} step={step + 1} reward={last_score:.4f} error=model_error",
+                    flush=True,
+                )
                 break
             
             if getattr(msg, "tool_calls", None) is None:
@@ -93,7 +97,7 @@ def run_task(task_id: str, max_steps: int) -> float:
                     continue
 
                 action_type = args_dict.get("action", "inspect")
-                print("STEP")
+                steps_taken += 1
 
                 try:
                     action = DataAction(
@@ -120,9 +124,17 @@ def run_task(task_id: str, max_steps: int) -> float:
                         "tool_call_id": tc.id,
                         "content": json.dumps({"error": f"Action rejected: {detail}"}),
                     })
+                    print(
+                        f"[STEP] task={task_id} step={steps_taken} reward={last_score:.4f} error=action_rejected",
+                        flush=True,
+                    )
                     continue
 
                 last_score = reward.score
+                print(
+                    f"[STEP] task={task_id} step={steps_taken} reward={last_score:.4f}",
+                    flush=True,
+                )
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc.id,
@@ -130,10 +142,16 @@ def run_task(task_id: str, max_steps: int) -> float:
                 })
                 
                 if reward.done:
-                    print(f"END")
+                    print(
+                        f"[END] task={task_id} score={last_score:.4f} steps={steps_taken} status=done",
+                        flush=True,
+                    )
                     return last_score
                     
-        print(f"END")
+        print(
+            f"[END] task={task_id} score={last_score:.4f} steps={steps_taken} status=max_steps_or_stop",
+            flush=True,
+        )
         return last_score
 
 if __name__ == "__main__":
@@ -144,4 +162,6 @@ if __name__ == "__main__":
             print(f"{task_name} score: {score:.4f}")
     except Exception as e:
         # Final guardrail: never crash with non-zero exit due to unexpected errors.
-        print(f"FATAL_ERROR: {e}")
+        print("[START] task=fatal", flush=True)
+        print("[STEP] task=fatal step=0 reward=0.0000 error=fatal_error", flush=True)
+        print("[END] task=fatal score=0.0000 steps=0 status=fatal_error", flush=True)
