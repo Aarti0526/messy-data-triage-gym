@@ -34,6 +34,14 @@ TOOLS = [
     }
 ]
 
+EPS = 1e-3
+
+
+def _open_score(value: float) -> float:
+    """Force logged scores to be strictly within (0, 1)."""
+    return min(1.0 - EPS, max(EPS, float(value)))
+
+
 def run_task(task_id: str, max_steps: int) -> float:
     print(f"[START] task={task_id}", flush=True)
     steps_taken = 0
@@ -41,15 +49,17 @@ def run_task(task_id: str, max_steps: int) -> float:
         try:
             session_id, obs = env.reset(task_id, seed=42)
         except Exception as e:
-            print(f"[STEP] task={task_id} step=0 reward=0.0000 error=reset_failed", flush=True)
-            print(f"[END] task={task_id} score=0.0000 steps=0 status=reset_failed", flush=True)
-            return 0.0
+            safe = _open_score(0.0)
+            print(f"[STEP] task={task_id} step=0 reward={safe:.4f} error=reset_failed", flush=True)
+            print(f"[END] task={task_id} score={safe:.4f} steps=0 status=reset_failed", flush=True)
+            return safe
 
         if oai is None:
             # Return safely when token is unavailable; never crash the script.
-            print(f"[STEP] task={task_id} step=0 reward=0.0000 error=model_unavailable", flush=True)
-            print(f"[END] task={task_id} score=0.0000 steps=0 status=model_unavailable", flush=True)
-            return 0.0
+            safe = _open_score(0.0)
+            print(f"[STEP] task={task_id} step=0 reward={safe:.4f} error=model_unavailable", flush=True)
+            print(f"[END] task={task_id} score={safe:.4f} steps=0 status=model_unavailable", flush=True)
+            return safe
 
         messages = [
             {"role": "system", "content": (
@@ -61,7 +71,7 @@ def run_task(task_id: str, max_steps: int) -> float:
             )},
             {"role": "user", "content": f"Dataset info:\n{json.dumps(obs.model_dump(), indent=2)}\n\nClean this dataset."}
         ]
-        last_score = 0.0
+        last_score = _open_score(0.0)
         
         for step in range(max_steps):
             try:
@@ -74,7 +84,7 @@ def run_task(task_id: str, max_steps: int) -> float:
                 msg = response.choices[0].message
             except Exception as e:
                 print(
-                    f"[STEP] task={task_id} step={step + 1} reward={last_score:.4f} error=model_error",
+                    f"[STEP] task={task_id} step={step + 1} reward={_open_score(last_score):.4f} error=model_error",
                     flush=True,
                 )
                 break
@@ -125,12 +135,12 @@ def run_task(task_id: str, max_steps: int) -> float:
                         "content": json.dumps({"error": f"Action rejected: {detail}"}),
                     })
                     print(
-                        f"[STEP] task={task_id} step={steps_taken} reward={last_score:.4f} error=action_rejected",
+                        f"[STEP] task={task_id} step={steps_taken} reward={_open_score(last_score):.4f} error=action_rejected",
                         flush=True,
                     )
                     continue
 
-                last_score = reward.score
+                last_score = _open_score(reward.score)
                 print(
                     f"[STEP] task={task_id} step={steps_taken} reward={last_score:.4f}",
                     flush=True,
@@ -146,13 +156,13 @@ def run_task(task_id: str, max_steps: int) -> float:
                         f"[END] task={task_id} score={last_score:.4f} steps={steps_taken} status=done",
                         flush=True,
                     )
-                    return last_score
+                    return _open_score(last_score)
                     
         print(
             f"[END] task={task_id} score={last_score:.4f} steps={steps_taken} status=max_steps_or_stop",
             flush=True,
         )
-        return last_score
+        return _open_score(last_score)
 
 if __name__ == "__main__":
     try:
@@ -163,5 +173,6 @@ if __name__ == "__main__":
     except Exception as e:
         # Final guardrail: never crash with non-zero exit due to unexpected errors.
         print("[START] task=fatal", flush=True)
-        print("[STEP] task=fatal step=0 reward=0.0000 error=fatal_error", flush=True)
-        print("[END] task=fatal score=0.0000 steps=0 status=fatal_error", flush=True)
+        safe = _open_score(0.0)
+        print(f"[STEP] task=fatal step=0 reward={safe:.4f} error=fatal_error", flush=True)
+        print(f"[END] task=fatal score={safe:.4f} steps=0 status=fatal_error", flush=True)
