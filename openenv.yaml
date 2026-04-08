@@ -1,0 +1,28 @@
+env_id: messy-data-triage-gym-v1
+version: "0.1.0"
+description: >
+  Training environment where an AI agent cleans corrupted tabular datasets.
+  Five corruption types, three difficulty tasks, deterministic reward.
+
+server:
+  port: 8000
+  health_endpoint: /health
+
+tasks:
+  - id: easy
+    description: "200-row dataset, 2 corruption types"
+    max_steps: 20
+    score_threshold: 0.6
+  - id: medium
+    description: "500-row dataset, 4 corruption types across 6 columns"
+    max_steps: 40
+    score_threshold: 0.3
+  - id: hard
+    description: "800-row dataset, all 5 types with traps and cross-column deps"
+    max_steps: 60
+    score_threshold: 0.1
+
+docker:
+  image: messy-data-triage-gym:latest
+  build_context: .
+  dockerfile: Dockerfile

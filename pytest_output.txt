@@ -1,0 +1,21 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\SAMA\AppData\Local\Programs\Python\Python313\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\SAMA\scaler-meta\messy-data-triage-gym
+configfile: pyproject.toml
+plugins: anyio-4.10.0, asyncio-1.3.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 10 items
+
+tests/test_graders.py::test_hard_grader_trap_penalty PASSED              [ 10%]
+tests/test_graders.py::test_medium_grader_penalty PASSED                 [ 20%]
+tests/test_graders.py::test_easy_grader_penalty PASSED                   [ 30%]
+tests/test_validate.py::test_health PASSED                               [ 40%]
+tests/test_validate.py::test_reset_easy PASSED                           [ 50%]
+tests/test_validate.py::test_full_episode_easy PASSED                    [ 60%]
+tests/test_validate.py::test_invalid_action_missing_column PASSED        [ 70%]
+tests/test_validate.py::test_session_not_found PASSED                    [ 80%]
+tests/test_validate.py::test_score_is_deterministic PASSED               [ 90%]
+tests/test_validate.py::test_reward_bounds PASSED                        [100%]
+
+============================= 10 passed in 5.24s ==============================

@@ -1,0 +1,5 @@
+initial: total_bugs=35, fixed_bugs=0, broken_clean=0
+after price impute: total_bugs=35, fixed_bugs=0, broken_clean=0
+after qty cast float: total_bugs=35, fixed_bugs=0, broken_clean=185
+after qty impute median: total_bugs=35, fixed_bugs=0, broken_clean=185
+after qty cast Int64: total_bugs=35, fixed_bugs=0, broken_clean=0

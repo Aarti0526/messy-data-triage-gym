@@ -1,0 +1,67 @@
+=== FULL LIFECYCLE DEMO: EASY TASK ===
+
+✨ 1. THE GROUND TRUTH (Clean Data):
+   customer_id   price  quantity region
+0         1803  454.75        62  North
+1         7965  351.36        78  South
+2         6891  136.61        74   East
+3         4949  484.74        14   West
+4         4897  390.48        83   East
+5         8727  359.86        54   West
+6         1773  227.43        33   East
+7         7276  139.76        52  North
+8         2813   52.71        97  South
+9         1847  451.79        86   West
+------------------------------------------------------------
+
+🐛 2. THE CORRUPTED DATA (What the AI sees initially):
+   customer_id   price quantity region
+0         1803  454.75       62  North
+1         7965  351.36       78  South
+2         6891  136.61       74   East
+3         4949  484.74       14   West
+4         4897  390.48       83   East
+5         8727  359.86       54   West
+6         1773  227.43       33   East
+7         7276  139.76       52  North
+8         2813   52.71       97  South
+9         1847  451.79       86   West
+
+=> Initial Score: 0.00 / 1.0
+------------------------------------------------------------
+
+🤖 3. AGENT ACTION 1: Impute 'price' with median
+
+Data after Action 1:
+   customer_id   price quantity region
+0         1803  454.75       62  North
+1         7965  351.36       78  South
+2         6891  136.61       74   East
+3         4949  484.74       14   West
+4         4897  390.48       83   East
+5         8727  359.86       54   West
+6         1773  227.43       33   East
+7         7276  139.76       52  North
+8         2813   52.71       97  South
+9         1847  451.79       86   West
+=> Score after Action 1: 0.57 / 1.0
+------------------------------------------------------------
+
+🤖 4. AGENT ACTION 2: Cast 'quantity' to numeric (Int64 ignores NaNs) and then impute
+
+Data after Action 2 (Cast & Impute):
+   customer_id   price  quantity region
+0         1803  454.75        62  North
+1         7965  351.36        78  South
+2         6891  136.61        74   East
+3         4949  484.74        14   West
+4         4897  390.48        83   East
+5         8727  359.86        54   West
+6         1773  227.43        33   East
+7         7276  139.76        52  North
+8         2813   52.71        97  South
+9         1847  451.79        86   West
+
+✅ FINAL SCORE: 1.00 / 1.0
+------------------------------------------------------------
+Agent successfully cleaned the data!

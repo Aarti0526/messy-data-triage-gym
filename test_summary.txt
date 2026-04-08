@@ -1,0 +1,123 @@
+
+── SECTION 1: Dataset Factory ─────────────────────────────────────────
+  ✅  easy_shape
+  ✅  medium_shape
+  ✅  hard_shape
+  ✅  determinism_same_seed
+  ✅  different_seeds_differ
+  ✅  easy_dtypes
+  ✅  medium_date_format
+  ✅  hard_temp_unit_all_C
+  ✅  hard_timestamp_format
+  ✅  bool_column_values
+
+── SECTION 2: Corruptor ────────────────────────────────────────────────
+  ✅  easy_nulls_in_price
+  ✅  easy_type_mismatch_quantity
+  ✅  medium_4_corruption_types
+  ✅  medium_duplicate_rows_appended
+  ✅  hard_contains_trap
+  ✅  hard_unit_mismatch_conversion
+  ✅  hard_6_corruption_records
+  ✅  manifest_clean_df_unchanged
+  ✅  null_idx_count_easy
+
+── SECTION 3: Executor ─────────────────────────────────────────────────
+  ✅  inspect_no_mutation
+  ✅  cast_float_to_int
+  ✅  cast_with_strip_pattern
+  ✅  impute_median
+  ✅  impute_mean
+  ✅  impute_constant
+  ✅  dedupe_removes_duplicates
+  ✅  dedupe_keep_first
+  ✅  rescale_F_to_C
+  ✅  rescale_C_to_F
+  ✅  invalid_column_cast_raises
+  ✅  invalid_column_impute_raises
+  ✅  unknown_impute_strategy_raises
+  ✅  observe_returns_correct_shape
+  ✅  no_inplace_mutation
+
+── SECTION 4: Graders ──────────────────────────────────────────────────
+  ✅  perfect_fix_scores_1
+  ✅  zero_fix_score
+  ✅  score_in_bounds_easy
+  ✅  score_in_bounds_hard
+  ✅  hard_penalty_harsher
+  ✅  trap_triggers_hard_cap
+  ✅  duplicate_grading
+  ✅  medium_penalty_between
+  ✅  no_bugs_returns_1
+  ✅  broken_clean_cells_penalised
+
+── SECTION 5: FastAPI Server & Session ─────────────────────────────────
+  ✅  server_health
+  ✅  reset_easy
+  ❌  reset_medium: 
+  ✅  reset_hard
+  ✅  reset_no_seed
+  ✅  reset_invalid_task
+  ✅  step_inspect
+  ✅  step_missing_column_on_cast
+  ✅  step_nonexistent_session
+  ✅  get_state_endpoint
+  ✅  state_not_found
+  ✅  step_increments_step_counter
+  ✅  done_after_max_steps
+  ✅  done_episode_blocked
+  ✅  deterministic_same_seed
+  ✅  reward_bounds_all_tasks
+  ✅  impute_via_api
+  ✅  cast_quantity_via_api
+  ✅  grader_called_correctly_per_task
+
+── SECTION 6: Full Episode E2E ─────────────────────────────────────────
+  ❌  full_easy_episode_score_improves: Score should improve: 0.0 -> 0.0
+  ✅  full_medium_deduplication
+  ✅  hard_rescale_improves_score
+  ✅  step_info_has_task_and_step
+  ✅  max_steps_medium_40
+
+── SECTION 7: Edge Cases & Adversarial ─────────────────────────────────
+  ✅  empty_df_observe
+  ✅  cast_already_correct_type
+  ✅  impute_no_nulls_noop
+  ✅  dedupe_no_duplicates_noop
+  ✅  model_cast_no_col_raises
+  ✅  model_impute_no_col_raises
+  ✅  model_invalid_action_raises
+  ✅  multiple_seeds_score_bounds
+  ✅  rescale_without_condition
+  ✅  strip_pattern_dollar_comma
+  ✅  score_easy_clean_data_seeds
+  ✅  all_action_types_via_api
+  ✅  observation_fields_complete
+
+============================================================
+  RESULTS: 79/81 passed  |  2 failed
+============================================================
+
+Failed tests:
+
+  ❌ reset_medium
+  Traceback (most recent call last):
+    File "C:\Users\SAMA\scaler-meta\messy-data-triage-gym\run_all_tests.py", line 32, in run
+      fn()
+      ~~^^
+    File "C:\Users\SAMA\scaler-meta\messy-data-triage-gym\run_all_tests.py", line 450, in t_reset_medium
+      assert r.json()["observation"]["shape"][0] == 500
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  AssertionError
+  
+
+  ❌ full_easy_episode_score_improves
+  Traceback (most recent call last):
+    File "C:\Users\SAMA\scaler-meta\messy-data-triage-gym\run_all_tests.py", line 32, in run
+      fn()
+      ~~^^
+    File "C:\Users\SAMA\scaler-meta\messy-data-triage-gym\run_all_tests.py", line 614, in t_full_easy_episode_score_improves
+      assert score_final > score0, f"Score should improve: {score0} -> {score_final}"
+             ^^^^^^^^^^^^^^^^^^^^
+  AssertionError: Score should improve: 0.0 -> 0.0
+  

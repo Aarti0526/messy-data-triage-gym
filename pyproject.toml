@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "messy-data-triage-gym"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+    "pydantic>=2.7.0",
+    "python-multipart>=0.0.9",
+    "httpx>=0.27.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+baseline = ["openai>=1.0.0"]
+test = ["pytest>=8.0.0", "pytest-asyncio>=0.23.0", "httpx>=0.27.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["data_triage_env*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
