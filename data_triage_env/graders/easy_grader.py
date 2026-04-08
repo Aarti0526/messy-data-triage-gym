@@ -2,6 +2,14 @@ import pandas as pd
 import numpy as np
 from data_triage_env.engine.corruptor import GroundTruthManifest
 
+EPS = 1e-6
+
+
+def _open_unit(score: float) -> float:
+    """Force score to be strictly inside (0, 1)."""
+    return float(min(1.0 - EPS, max(EPS, score)))
+
+
 def score(agent_df: pd.DataFrame, manifest: GroundTruthManifest, penalty_multiplier: float = 10.0, max_score_if_trap_broken: float = 1.0) -> float:
     clean = manifest.clean_df
     total_bugs = 0
@@ -85,7 +93,8 @@ def score(agent_df: pd.DataFrame, manifest: GroundTruthManifest, penalty_multipl
                 broken_clean += 1
 
     if total_bugs == 0:
-        return 1.0 if not trap_broken else min(1.0, max_score_if_trap_broken)
+        base = 1.0 if not trap_broken else min(1.0, max_score_if_trap_broken)
+        return _open_unit(base)
 
     raw = fixed_bugs / total_bugs
     penalty = min(1.0, (broken_clean * penalty_multiplier) / max(total_bugs, 1))
@@ -94,4 +103,4 @@ def score(agent_df: pd.DataFrame, manifest: GroundTruthManifest, penalty_multipl
     if trap_broken:
         final_score = min(final_score, max_score_if_trap_broken)
 
-    return final_score
+    return _open_unit(final_score)
