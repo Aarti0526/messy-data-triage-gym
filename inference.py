@@ -3,6 +3,7 @@ inference.py - Baseline agent for Meta OpenEnv Hackathon Submission.
 """
 import os
 import json
+import httpx
 from openai import OpenAI
 from data_triage_env.client import DataTriageClient
 from data_triage_env.models import DataAction
@@ -72,18 +73,47 @@ def run_task(task_id: str, max_steps: int) -> float:
             messages.append(msg)
             
             for tc in msg.tool_calls:
-                args_dict = json.loads(tc.function.arguments)
+                try:
+                    args_dict = json.loads(tc.function.arguments or "{}")
+                except json.JSONDecodeError:
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": json.dumps({"error": "Invalid tool arguments JSON"}),
+                    })
+                    continue
+
                 action_type = args_dict.get("action", "inspect")
-                print(f"STEP")
-                
-                action = DataAction(
-                    action=action_type,
-                    column=args_dict.get("column"),
-                    params=args_dict.get("params", {}),
-                )
-                obs, reward = env.step(session_id, action)
+                print("STEP")
+
+                try:
+                    action = DataAction(
+                        action=action_type,
+                        column=args_dict.get("column"),
+                        params=args_dict.get("params", {}),
+                    )
+                except Exception as e:
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": json.dumps({"error": f"Invalid action payload: {e}"}),
+                    })
+                    continue
+
+                try:
+                    obs, reward = env.step(session_id, action)
+                except httpx.HTTPStatusError as e:
+                    # Keep the episode alive and feed server-side validation errors
+                    # back to the model so it can self-correct next step.
+                    detail = e.response.text if e.response is not None else str(e)
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": json.dumps({"error": f"Action rejected: {detail}"}),
+                    })
+                    continue
+
                 last_score = reward.score
-                
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc.id,
