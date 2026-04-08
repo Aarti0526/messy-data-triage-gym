@@ -13,14 +13,7 @@ MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.3-70B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
-if not HF_TOKEN:
-    print("HF_TOKEN is missing!")
-    exit(1)
-
-oai = OpenAI(
-    api_key=HF_TOKEN,
-    base_url=API_BASE_URL
-)
+oai = OpenAI(api_key=HF_TOKEN or "", base_url=API_BASE_URL) if HF_TOKEN else None
 
 TOOLS = [
     {
@@ -44,7 +37,19 @@ TOOLS = [
 def run_task(task_id: str, max_steps: int) -> float:
     print(f"START")
     with DataTriageClient() as env:
-        session_id, obs = env.reset(task_id, seed=42)
+        try:
+            session_id, obs = env.reset(task_id, seed=42)
+        except Exception as e:
+            print(f"RESET_ERROR: {e}")
+            print("END")
+            return 0.0
+
+        if oai is None:
+            # Return safely when token is unavailable; never crash the script.
+            print("MODEL_UNAVAILABLE: HF_TOKEN is missing")
+            print("END")
+            return 0.0
+
         messages = [
             {"role": "system", "content": (
                 "You are a data cleaning agent. You have access to a dirty DataFrame. "
@@ -58,13 +63,17 @@ def run_task(task_id: str, max_steps: int) -> float:
         last_score = 0.0
         
         for step in range(max_steps):
-            response = oai.chat.completions.create(
-                model=MODEL_NAME,
-                messages=messages,
-                tools=TOOLS,
-                tool_choice="auto",
-            )
-            msg = response.choices[0].message
+            try:
+                response = oai.chat.completions.create(
+                    model=MODEL_NAME,
+                    messages=messages,
+                    tools=TOOLS,
+                    tool_choice="auto",
+                )
+                msg = response.choices[0].message
+            except Exception as e:
+                print(f"MODEL_ERROR: {e}")
+                break
             
             if getattr(msg, "tool_calls", None) is None:
                 # If no tool calls, the agent thinks it's done.
@@ -128,6 +137,11 @@ def run_task(task_id: str, max_steps: int) -> float:
         return last_score
 
 if __name__ == "__main__":
-    for task_name in ["easy", "medium", "hard"]:
-        max_s = {"easy": 20, "medium": 40, "hard": 60}[task_name]
-        score = run_task(task_name, max_s)
+    try:
+        for task_name in ["easy", "medium", "hard"]:
+            max_s = {"easy": 20, "medium": 40, "hard": 60}[task_name]
+            score = run_task(task_name, max_s)
+            print(f"{task_name} score: {score:.4f}")
+    except Exception as e:
+        # Final guardrail: never crash with non-zero exit due to unexpected errors.
+        print(f"FATAL_ERROR: {e}")
