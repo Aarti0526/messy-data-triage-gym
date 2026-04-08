@@ -35,9 +35,14 @@ class DataReward(BaseModel):
     info: dict[str, Any] = Field(default_factory=dict)
 
 class ResetRequest(BaseModel):
-    task_id: Literal["easy", "medium", "hard"]
+    task_id: Optional[str] = None
+    task: Optional[str] = None
+    env_id: Optional[str] = None
     seed: Optional[int] = None
 
+    @property
+    def effective_task(self) -> str:
+        return self.task_id or self.task or self.env_id or "easy"
 class StepRequest(BaseModel):
     session_id: str
     action: DataAction

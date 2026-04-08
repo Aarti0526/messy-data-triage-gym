@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
+from typing import Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
 from data_triage_env.models import ResetRequest, StepRequest, DataReward
@@ -34,9 +35,10 @@ async def health():
     return {"status": "ok", "env": "messy-data-triage-gym-v1"}
 
 @app.post("/reset")
-async def reset(req: ResetRequest):
-    session_id, obs = _manager.create(req.task_id, req.seed)
-    return {"session_id": session_id, "observation": obs.model_dump()}
+async def reset(req: Optional[ResetRequest] = None):
+    req = req or ResetRequest()
+    session_id, obs = _manager.create(req.effective_task, req.seed)
+    return {"session_id": session_id, "observation": obs.model_dump(), "info": {"session_id": session_id}}
 
 @app.post("/step")
 async def step(req: StepRequest):
