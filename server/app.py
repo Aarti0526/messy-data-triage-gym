@@ -7,3 +7,7 @@ def main() -> None:
     """CLI script entrypoint used by multi-mode validators."""
     # Intentionally lightweight: app serving is delegated to ASGI runners.
     return None
+
+
+if __name__ == "__main__":
+    main()
