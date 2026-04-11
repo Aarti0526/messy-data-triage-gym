@@ -32,16 +32,16 @@ def run(name, fn):
         fn()
         PASS += 1
         TESTS.append(("PASS", name))
-        print(f"  ✅  {name}")
+        print(f"  PASS  {name}")
     except Exception as e:
         FAIL += 1
         TESTS.append(("FAIL", name, traceback.format_exc()))
-        print(f"  ❌  {name}: {e}")
+        print(f"  FAIL  {name}: {e}")
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # SECTION 1 – Dataset Factory
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n── SECTION 1: Dataset Factory ─────────────────────────────────────────")
+# ==============================================================================
+print("\n-- SECTION 1: Dataset Factory -----------------------------------------")
 
 def t_easy_shape():
     df = generate_clean("easy", 0)
@@ -103,10 +103,10 @@ run("hard_temp_unit_all_C", t_hard_temp_unit_all_C)
 run("hard_timestamp_format", t_hard_timestamp_format)
 run("bool_column_values", t_bool_column)
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # SECTION 2 – Corruptor
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n── SECTION 2: Corruptor ────────────────────────────────────────────────")
+# ==============================================================================
+print("\n-- SECTION 2: Corruptor ------------------------------------------------")
 
 def t_easy_nulls_in_price():
     df = generate_clean("easy", 10)
@@ -186,10 +186,10 @@ run("hard_6_corruption_records", t_hard_6_corruption_records)
 run("manifest_clean_df_unchanged", t_manifest_clean_df_unchanged)
 run("null_idx_count_easy", t_null_idx_count_easy)
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # SECTION 3 – Executor
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n── SECTION 3: Executor ─────────────────────────────────────────────────")
+# ==============================================================================
+print("\n-- SECTION 3: Executor -------------------------------------------------")
 
 def t_inspect_no_mutation():
     df = generate_clean("easy", 0)
@@ -301,10 +301,10 @@ run("unknown_impute_strategy_raises", t_unknown_impute_strategy)
 run("observe_returns_correct_shape", t_observe_returns_correct_shape)
 run("no_inplace_mutation", t_no_inplace_mutation)
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # SECTION 4 – Graders
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n── SECTION 4: Graders ──────────────────────────────────────────────────")
+# ==============================================================================
+print("\n-- SECTION 4: Graders --------------------------------------------------")
 
 def _make_manifest_single(col, val, idx=0):
     clean_df = pd.DataFrame({col: [val, 2, 3, 4, 5]})
@@ -425,10 +425,10 @@ run("medium_penalty_between", t_medium_penalty_between_easy_and_hard)
 run("no_bugs_returns_1", t_no_bugs_returns_1)
 run("broken_clean_cells_penalised", t_broken_clean_outside_corrupted_positions)
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # SECTION 5 – FastAPI Server & Session
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n── SECTION 5: FastAPI Server & Session ─────────────────────────────────")
+# ==============================================================================
+print("\n-- SECTION 5: FastAPI Server & Session ---------------------------------")
 
 def t_server_health():
     r = client.get("/health")
@@ -591,10 +591,10 @@ run("impute_via_api", t_impute_via_api)
 run("cast_quantity_via_api", t_cast_quantity_via_api)
 run("grader_called_correctly_per_task", t_grader_called_correctly_per_task)
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # SECTION 6 – Full Episode Simulations (End-to-End)
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n── SECTION 6: Full Episode E2E ─────────────────────────────────────────")
+# ==============================================================================
+print("\n-- SECTION 6: Full Episode E2E -----------------------------------------")
 
 def t_full_easy_episode_score_improves():
     r = client.post("/reset", json={"task_id": "easy", "seed": 42})
@@ -669,10 +669,10 @@ run("hard_rescale_improves_score", t_hard_rescale_F_to_C_improves_score)
 run("step_info_has_task_and_step", t_step_info_has_task_and_step)
 run("max_steps_medium_40", t_max_steps_medium_40)
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # SECTION 7 – Edge Cases & Adversarial Inputs
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n── SECTION 7: Edge Cases & Adversarial ─────────────────────────────────")
+# ==============================================================================
+print("\n-- SECTION 7: Edge Cases & Adversarial ---------------------------------")
 
 def t_empty_df_observe():
     df = pd.DataFrame({"a": [], "b": []})
@@ -790,9 +790,9 @@ run("score_easy_clean_data_seeds", t_score_easy_multiple_seeds_clean_data)
 run("all_action_types_via_api", t_all_action_types_via_api)
 run("observation_fields_complete", t_observation_fields_complete)
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # FINAL REPORT
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 total = PASS + FAIL
 print(f"\n{'='*60}")
 print(f"  RESULTS: {PASS}/{total} passed  |  {FAIL} failed")
@@ -801,6 +801,6 @@ if FAIL > 0:
     print("\nFailed tests:")
     for t in TESTS:
         if t[0] == "FAIL":
-            print(f"\n  ❌ {t[1]}")
+            print(f"\n  [FAIL] {t[1]}")
             print("  " + t[2].replace("\n", "\n  "))
 sys.exit(0 if FAIL == 0 else 1)

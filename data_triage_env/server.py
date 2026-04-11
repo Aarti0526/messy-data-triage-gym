@@ -37,7 +37,10 @@ async def health():
 @app.post("/reset")
 async def reset(req: Optional[ResetRequest] = None):
     req = req or ResetRequest()
-    session_id, obs = _manager.create(req.effective_task, req.seed)
+    try:
+        session_id, obs = _manager.create(req.effective_task, req.seed)
+    except KeyError:
+        raise HTTPException(status_code=422, detail=f"Invalid task_id: {req.effective_task}")
     return {"session_id": session_id, "observation": obs.model_dump(), "info": {"session_id": session_id}}
 
 @app.post("/step")

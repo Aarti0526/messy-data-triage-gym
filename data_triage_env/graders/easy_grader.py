@@ -94,7 +94,7 @@ def score(agent_df: pd.DataFrame, manifest: GroundTruthManifest, penalty_multipl
 
     if total_bugs == 0:
         base = 1.0 if not trap_broken else min(1.0, max_score_if_trap_broken)
-        return _open_unit(base)
+        return float(base)
 
     raw = fixed_bugs / total_bugs
     penalty = min(1.0, (broken_clean * penalty_multiplier) / max(total_bugs, 1))
@@ -103,4 +103,4 @@ def score(agent_df: pd.DataFrame, manifest: GroundTruthManifest, penalty_multipl
     if trap_broken:
         final_score = min(final_score, max_score_if_trap_broken)
 
-    return _open_unit(final_score)
+    return float(final_score)

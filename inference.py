@@ -1,19 +1,24 @@
-"""
-inference.py - Baseline agent for Meta OpenEnv Hackathon Submission.
-"""
 import os
+import sys
 import json
 import httpx
 from openai import OpenAI
 from data_triage_env.client import DataTriageClient
 from data_triage_env.models import DataAction
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://api-inference.huggingface.co/v1/")
-MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.3-70B-Instruct")
+# Read environment variables with defaults where required
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4.1-mini")
 HF_TOKEN = os.getenv("HF_TOKEN")
-LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
-oai = OpenAI(api_key=HF_TOKEN or "", base_url=API_BASE_URL) if HF_TOKEN else None
+if HF_TOKEN is None:
+    raise ValueError("HF_TOKEN environment variable is required")
+
+# Initialize OpenAI client
+client = OpenAI(
+    base_url=API_BASE_URL,
+    api_key=HF_TOKEN
+)
 
 TOOLS = [
     {
@@ -34,32 +39,21 @@ TOOLS = [
     }
 ]
 
-EPS = 1e-3
-
-
-def _open_score(value: float) -> float:
-    """Force logged scores to be strictly within (0, 1)."""
-    return min(1.0 - EPS, max(EPS, float(value)))
-
-
-def run_task(task_id: str, max_steps: int) -> float:
-    print(f"[START] task={task_id}", flush=True)
+def run_task(task_id: str, max_steps: int):
+    # One [START] line at episode begin.
+    print(f"[START] task={task_id} env=messy-data-triage-gym model={MODEL_NAME}", flush=True)
+    
     steps_taken = 0
+    rewards = []
+    success = False
+    
     with DataTriageClient() as env:
         try:
             session_id, obs = env.reset(task_id, seed=42)
         except Exception as e:
-            safe = _open_score(0.0)
-            print(f"[STEP] task={task_id} step=0 reward={safe:.4f} error=reset_failed", flush=True)
-            print(f"[END] task={task_id} score={safe:.4f} steps=0 status=reset_failed", flush=True)
-            return safe
-
-        if oai is None:
-            # Return safely when token is unavailable; never crash the script.
-            safe = _open_score(0.0)
-            print(f"[STEP] task={task_id} step=0 reward={safe:.4f} error=model_unavailable", flush=True)
-            print(f"[END] task={task_id} score={safe:.4f} steps=0 status=model_unavailable", flush=True)
-            return safe
+            # Emitting an end immediately on failure during reset
+            print(f"[END] success=false steps=0 rewards=", flush=True)
+            return
 
         messages = [
             {"role": "system", "content": (
@@ -71,108 +65,100 @@ def run_task(task_id: str, max_steps: int) -> float:
             )},
             {"role": "user", "content": f"Dataset info:\n{json.dumps(obs.model_dump(), indent=2)}\n\nClean this dataset."}
         ]
-        last_score = _open_score(0.0)
-        
+
         for step in range(max_steps):
             try:
-                response = oai.chat.completions.create(
+                response = client.chat.completions.create(
                     model=MODEL_NAME,
                     messages=messages,
                     tools=TOOLS,
-                    tool_choice="auto",
                 )
                 msg = response.choices[0].message
             except Exception as e:
-                print(
-                    f"[STEP] task={task_id} step={step + 1} reward={_open_score(last_score):.4f} error=model_error",
-                    flush=True,
-                )
+                # Emitting an error step if model completion fails
                 break
-            
+
             if getattr(msg, "tool_calls", None) is None:
-                # If no tool calls, the agent thinks it's done.
                 break
-                
+
             messages.append(msg)
-            
+
             for tc in msg.tool_calls:
+                steps_taken += 1
+                action_type = "unknown"
+                column = ""
+                action_str = "unknown"
+
                 try:
                     args_dict = json.loads(tc.function.arguments or "{}")
-                except json.JSONDecodeError:
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tc.id,
-                        "content": json.dumps({"error": "Invalid tool arguments JSON"}),
-                    })
-                    continue
+                    action_type = args_dict.get("action", "inspect")
+                    column = args_dict.get("column", "")
+                    
+                    if column:
+                        action_str = f"{action_type}('{column}')"
+                    else:
+                        action_str = f"{action_type}()"
+                    # Remove spaces to comply with requirements if any
+                    action_str = action_str.replace(" ", "")
 
-                action_type = args_dict.get("action", "inspect")
-                steps_taken += 1
-
-                try:
                     action = DataAction(
                         action=action_type,
                         column=args_dict.get("column"),
                         params=args_dict.get("params", {}),
                     )
-                except Exception as e:
+                    
+                    obs, reward = env.step(session_id, action)
+                    
+                    r_val = float(reward.score)
+                    r_str = f"{r_val:.2f}"
+                    rewards.append(r_str)
+                    
+                    d_str = "true" if reward.done else "false"
+                    print(f"[STEP] step={steps_taken} action={action_str} reward={r_str} done={d_str} error=null", flush=True)
+                    
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tc.id,
-                        "content": json.dumps({"error": f"Invalid action payload: {e}"}),
+                        "content": json.dumps({"score": reward.score, "obs": obs.model_dump()}),
                     })
-                    continue
+                    
+                    if reward.done:
+                        success = True
+                        r_joined = ",".join(rewards)
+                        s_str = "true" if success else "false"
+                        print(f"[END] success={s_str} steps={steps_taken} rewards={r_joined}", flush=True)
+                        return
 
-                try:
-                    obs, reward = env.step(session_id, action)
                 except httpx.HTTPStatusError as e:
-                    # Keep the episode alive and feed server-side validation errors
-                    # back to the model so it can self-correct next step.
                     detail = e.response.text if e.response is not None else str(e)
+                    detail = detail.replace('\n', ' ').replace('\r', '')
+                    r_str = "0.00"
+                    rewards.append(r_str)
+                    print(f"[STEP] step={steps_taken} action={action_str} reward={r_str} done=false error={detail}", flush=True)
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tc.id,
                         "content": json.dumps({"error": f"Action rejected: {detail}"}),
                     })
-                    print(
-                        f"[STEP] task={task_id} step={steps_taken} reward={_open_score(last_score):.4f} error=action_rejected",
-                        flush=True,
-                    )
-                    continue
+                except Exception as e:
+                    err_msg = str(e).replace('\n', ' ').replace('\r', '')
+                    if err_msg == "":
+                        err_msg = type(e).__name__
+                    r_str = "0.00"
+                    rewards.append(r_str)
+                    print(f"[STEP] step={steps_taken} action={action_str} reward={r_str} done=false error={err_msg}", flush=True)
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": json.dumps({"error": f"Error: {err_msg}"}),
+                    })
 
-                last_score = _open_score(reward.score)
-                print(
-                    f"[STEP] task={task_id} step={steps_taken} reward={last_score:.4f}",
-                    flush=True,
-                )
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": json.dumps({"score": reward.score, "obs": obs.model_dump()}),
-                })
-                
-                if reward.done:
-                    print(
-                        f"[END] task={task_id} score={last_score:.4f} steps={steps_taken} status=done",
-                        flush=True,
-                    )
-                    return _open_score(last_score)
-                    
-        print(
-            f"[END] task={task_id} score={last_score:.4f} steps={steps_taken} status=max_steps_or_stop",
-            flush=True,
-        )
-        return _open_score(last_score)
+        # Outside the loop max steps reached
+        r_joined = ",".join(rewards)
+        s_str = "true" if success else "false"
+        print(f"[END] success={s_str} steps={steps_taken} rewards={r_joined}", flush=True)
 
 if __name__ == "__main__":
-    try:
-        for task_name in ["easy", "medium", "hard"]:
-            max_s = {"easy": 20, "medium": 40, "hard": 60}[task_name]
-            score = run_task(task_name, max_s)
-            print(f"{task_name} score: {score:.4f}")
-    except Exception as e:
-        # Final guardrail: never crash with non-zero exit due to unexpected errors.
-        print("[START] task=fatal", flush=True)
-        safe = _open_score(0.0)
-        print(f"[STEP] task=fatal step=0 reward={safe:.4f} error=fatal_error", flush=True)
-        print(f"[END] task=fatal score={safe:.4f} steps=0 status=fatal_error", flush=True)
+    for task_name in ["easy", "medium", "hard"]:
+        max_s = {"easy": 20, "medium": 40, "hard": 60}[task_name]
+        run_task(task_name, max_s)
