@@ -317,7 +317,8 @@ def _make_manifest_single(col, val, idx=0):
 def t_perfect_fix_scores_1():
     clean_df, manifest = _make_manifest_single("col", 10)
     s = score_easy(clean_df.copy(), manifest)
-    assert s == 1.0, f"Perfect fix should score 1.0, got {s}"
+    # Grader clamps to (0, 1) exclusive — near 1.0 is the correct output
+    assert s >= 1.0 - 1e-5, f"Perfect fix should score near 1.0, got {s}"
 
 def t_zero_fix_score():
     clean_df, manifest = _make_manifest_single("col", 10)
@@ -399,7 +400,8 @@ def t_no_bugs_returns_1():
     clean_df = pd.DataFrame({"a": [1, 2, 3]})
     manifest = GroundTruthManifest(clean_df=clean_df.copy(), records=[])
     s = score_easy(clean_df.copy(), manifest)
-    assert s == 1.0
+    # Grader clamps to (0, 1) exclusive; near 1.0 is correct
+    assert s >= 1.0 - 1e-5, f"No bugs should score near 1.0, got {s}"
 
 def t_broken_clean_outside_corrupted_positions():
     clean_df = pd.DataFrame({"a": [10, 20, 30], "b": [1, 2, 3]})
@@ -411,8 +413,9 @@ def t_broken_clean_outside_corrupted_positions():
     agent_df.at[0, "a"] = 10   # fix the bug
     agent_df.at[1, "b"] = 999  # break a clean cell
     s = score_easy(agent_df, manifest)
-    # penalty = (1 * 10) / 1 = 10 >= 1.0, so capped; raw = 1.0; score = 0.0
-    assert s == 0.0
+    # penalty = (1 * 10) / 1 = 10 >= 1.0, so capped; raw = 1.0; score near 0.0
+    # Grader clamps to (0, 1) exclusive so exact 0.0 becomes epsilon
+    assert s <= 1e-5, f"Heavily penalised score should be near 0.0, got {s}"
 
 run("perfect_fix_scores_1", t_perfect_fix_scores_1)
 run("zero_fix_score", t_zero_fix_score)
